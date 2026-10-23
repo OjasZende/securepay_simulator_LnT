@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+cryptography
+pwdlib[argon2]
+pytest
+httpx
