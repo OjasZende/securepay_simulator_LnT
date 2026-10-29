@@ -1,11 +1,19 @@
-# SecurePay Simulator
+# SecurePay Simulator (Problem Statement 03)
 
-A **local educational payment simulator** using fictional records. It demonstrates encryption at rest, a local PKI and HTTPS handshake, password hashing, selected PCI DSS security principles, privacy minimization, and measurable dashboard checks. It is **not** a payment processor or a PCI DSS certification tool.
+A **local educational FinTech payment simulator** using fictional records. It demonstrates how a FinTech payment system protects sensitive customer and payment data using encryption (`AES-256-GCM`) and Public Key Infrastructure (`PKI`), satisfies key **PCI-DSS v4.0** security principles, protects credentials with **Argon2id**, and minimizes data-privacy risks. It is **not** a real payment processor or a formal PCI-DSS certification tool.
 
-## Requirements
+## Problem Statement Coverage
 
-- Python 3.13+
-- The packages in `requirements.txt`
+| Requirement | Implementation in SecurePay Simulator |
+|---|---|
+| **Dummy customer & transaction data** | Seeded fictional customers (`customers` table) and payment records (`transactions` table) in SQLite (`data/securepay.sqlite3`), plus interactive creation of customers and payments. |
+| **Plain-text vs. protected data** | Side-by-side comparison across Customer PII, Cardholder/Authentication Data, Credentials, and Network Transport, plus live database inspection showing decrypted emails alongside stored `AES-256-GCM` ciphertext and before/after metrics. |
+| **Basic encryption & key management** | `AES-256-GCM` authenticated encryption with 96-bit random nonces, 128-bit integrity tags, Additional Authenticated Data (`AAD`), interactive bit-flip tamper detection, and 256-bit key isolation in `.secrets/data-key.bin`. |
+| **PKI-based secure communication** | Local Root CA (`ca.pem`) signing a server X.509 certificate (`server.pem`, RSA-3072) with SANs for `localhost`/`127.0.0.1`, mandatory HTTPS enforcement (`HTTP 426`), `app.verify_tls` verification, and an interactive 5-step PKI channel simulator (`RSA-OAEP` key exchange + `AES-256-GCM` channel + `RSA-SHA256` signed transaction receipts). |
+| **Selected PCI-DSS principles** | Live automated checks mapped to **PCI-DSS Req 3.2/3.3** (no SAD/CVV storage, tokenization), **Req 3.5/3.6** (encryption at rest & key separation), **Req 4.2** (PKI & TLS transport), **Req 6.2** (strict input validation & parameterized SQL), **Req 7.2 & 8.3** (authenticated admin access, password policy & Argon2id hashing), and **Req 10.2** (100% transaction audit trail). |
+| **Simple privacy module** | Classifies what personal/financial data is collected, why each field is collected, live SQLite schema inspection proving zero excess columns (`phone`, `address`, `birth_date`, `pan`, `cvv`), and an interactive **Privacy Payload Inspector** that flags unnecessary PII and prohibited PCI fields. |
+
+## Setup & Run
 
 On Windows PowerShell:
 
@@ -15,38 +23,27 @@ py -3.13 -m venv .venv
 .\.venv\Scripts\python.exe -m app.setup
 ```
 
-**Copy the one-time admin password shown by setup.** It is not recoverable from the stored Argon2id hash. Setup generates fictional customers, an AES-256-GCM key, a local CA, and a server certificate. The SQLite database and all secrets remain in ignored local folders.
+> **Tip:** If the demo was already initialized and you want to generate a fresh one-time administrator password, keys, and certificates, run:
+> ```powershell
+> .\.venv\Scripts\python.exe -m app.setup --reset
+> ```
 
-Run the HTTPS app:
+**Copy the one-time admin password shown by setup.** It is stored only as a salted Argon2id hash in `.secrets/admin-hash.txt`.
+
+Start the HTTPS server:
 
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8443 --ssl-keyfile .secrets/server-key.pem --ssl-certfile .secrets/server.pem
 ```
 
-Open **https://127.0.0.1:8443** and log in as `admin`. The browser will warn about the local demo CA because it is not in the operating system trust store. For a verified trust demonstration, keep the server running and execute in another terminal:
+Open **https://127.0.0.1:8443** and log in with password from setup (username is `admin`). To verify the TLS handshake and X.509 certificate chain against the local Root CA (`.secrets/ca.pem`) from another terminal:
 
 ```powershell
 .\.venv\Scripts\python.exe -m app.verify_tls
 ```
 
-The verification script trusts only `.secrets/ca.pem` and checks the HTTPS certificate and hostname. Do not install this demo CA in your system trust store. `/docs` provides the FastAPI API reference.
-
-## What to demonstrate
-
-1. **Sensitive data:** The privacy inventory classifies personal, cardholder, sensitive authentication, financial, and credential fields. It lists each field's purpose, whether it is stored, and its protection.
-2. **Stored data:** Customer emails are AES-GCM ciphertext in SQLite; the dashboard shows a fictional plaintext sample and its encrypted form. The random nonce and authentication tag allow tampering to be detected.
-3. **PKI:** A local CA signs the server certificate. The dashboard checks its signature, dates and hostname, and demonstrates a signed receipt checked with the public key. The private key stays server-side.
-4. **Transmission:** Payment and customer APIs reject plain HTTP. Run the app over HTTPS and use `app.verify_tls` to prove certificate-based trust.
-5. **Selected PCI DSS principles:** The dashboard maps controls to requirements 3, 4, 7, 8 and 10. Checks inspect encrypted records, key separation, password hashing, HTTPS, and payment audit coverage. They are illustrative checks, not a full assessment.
-6. **Privacy:** The database stores no full card number, CVV, PIN, phone, birth date or address. Payment requests accept only a fictional customer's ID, amount and last four digits. A random token represents the payment method. The privacy panel explains the risks of unnecessary collection.
-7. **Measurement:** The before counts are measured from a temporary, overcollecting fictional record set assembled in memory. The after counts are measured from SQLite. The before records are never persisted.
-
-## Run checks
+## Run Automated Tests
 
 ```powershell
-.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m pytest -v
 ```
-
-Use fictional data only. Passwords are hashed, not encrypted. Keep `.secrets/` and `data/` private; they are excluded from Git. Local key files and a self-issued CA are appropriate for this demonstration, not production key management.
-
-Reference: [PCI DSS v4.0.1](https://blog.pcisecuritystandards.org/just-published-pci-dss-v4-0-1) and [PCI SSC guidance on sensitive authentication data](https://www.pcisecuritystandards.org/faqs/1154/).

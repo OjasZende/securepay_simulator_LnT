@@ -1,10 +1,19 @@
-"""Run once: python -m app.setup"""
+"""Run once: python -m app.setup (or python -m app.setup --reset)"""
+import sys
+
 from app import core
 from app.pki import create_certificates
 
 
 def main():
-    password = core.initialize()
+    reset = "--reset" in sys.argv
+    try:
+        password = core.initialize(reset=reset)
+    except RuntimeError as exc:
+        print(exc)
+        print("To regenerate demo records, keys, certificates, and get a new password, run:")
+        print("  python -m app.setup --reset")
+        return
     create_certificates(core.SECRET)
     print("SecurePay demo initialized with fictional records.")
     print("Dashboard login: admin")
@@ -15,3 +24,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
