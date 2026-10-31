@@ -1,0 +1,9 @@
+{
+    "SlideCount":  14,
+    "Output":  "D:\\Lnt_Project\\securepay_simulator_LnT\\output\\SecurePay_Project_Presentation.pptx",
+    "TextFitIssues":  [
+                          "Slide 2: text overflows shape 7",
+                          "Slide 12: text overflows shape 7",
+                          "Slide 14: text overflows shape 7"
+                      ]
+}
